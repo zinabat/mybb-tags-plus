@@ -1,0 +1,14 @@
+.DS_Store
+images/
+install/
+jscripts/
+admin/
+archive/
+inc/captcha_fonts/
+htaccess*
+.htaccess
+*.php
+*.html
+*.js
+!inc/plugins/tagsplus/*
+!tagsplus.php
