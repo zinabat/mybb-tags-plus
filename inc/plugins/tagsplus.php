@@ -18,7 +18,7 @@ function tagsplus_info()
         "website"       => "https://github.com/zinabat/mybb-tags-plus",
         "author"        => "Zina Ramirez",
         "authorsite"    => "https://www.linkedin.com/in/zina-ramirez-7125bb90/",
-        "version"       => "0.0",
+        "version"       => "1.0.0",
         "guid"          => "",
         "codename"      => "tagsplus",
         "compatibility" => "18*"
