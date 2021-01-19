@@ -11,4 +11,5 @@ htaccess*
 *.html
 *.js
 !inc/plugins/tagsplus/*
+!tagsplus.lang.php
 !tagsplus.php
