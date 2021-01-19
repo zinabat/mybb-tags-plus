@@ -1,0 +1,37 @@
+/* Tags Plus */
+tr#add-new-tag td.trow1 {
+    background-color: #ccefcc;
+    border-right-color: #aed8ae;
+    border-bottom-color: #aed8ae;
+}
+tr#add-new-tag .textbox {
+    width: calc(100% - 10px);
+}
+
+.autocomplete-wrapper {
+    position: relative;
+    z-index: 10;
+}
+.autocomplete-list {
+    position: absolute;
+    padding: 0.2rem;
+    background: #fff;
+    border: 1px solid rgb(46, 101, 189);
+}
+.tagsplus-badge {
+    display: inline-block;
+    background: #0a0a4f;
+    color: #fff;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+}
+a.tagsplus-badge,
+a.tagsplus-badge:hover {
+    color:#fff;
+}
+.tagsplus-badge .close {
+    display: none;
+}
+.tagsplus-badge.editable .close {
+    display: inline-block;
+}
