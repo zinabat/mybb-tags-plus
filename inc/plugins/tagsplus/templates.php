@@ -7,13 +7,10 @@ if (!defined("IN_MYBB")) {
 $templates = [
 'input' => '
     <tr>
-        <td class="trow2" style="vertical-align: top"><strong>Tags:</strong><br><small>Tags are separated by comma.</small></td>
+        <td class="trow2" style="vertical-align: top"><strong>Tags:</strong></td>
         <td class="trow2">
             <input type="hidden" value="{$tags_value}" name="thread-tag-ids" />
-            <div id="thread-tag-badges">{$tag_badges}</div>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="thread-tags-input" value="" />
-            </div>
+            <div id="thread-tags-container"></div>
         </td>
     </tr>',
 

@@ -13,43 +13,43 @@ $plugins->add_hook('editpost_end', 'tagsplus_show_input');
 function tagsplus_show_input() {
     global $mybb, $templates, $fid, $forum;
     // template variables
-    global $tag_post_input, $tags_value, $tagsscript;
+    global $tag_post_input, $tags_value, $tagsscript, $pid;
     $fid = $fid ? $fid : $forum['fid'];
     if (!TagsPlus::allowed_forum($fid)) {
         return;
     }
     $tags = TagsPlus::get_all_tags();
-    $tags_editable = ' editable';
-    // create a template for the badge for our javascript
-    $tag = [
-        'name' => 'NAME',
-        'tagid' => 'ID'
-    ];
-    $tags_editable = ' editable';
-    $badge_template = '';
-    eval('$badge_template = "'.$templates->get('tagsplus_badge').'";');
-    // remove html comments
-    $badge_template = preg_replace("/<!--(?!<!)[^\[>].*?-->/", "", $badge_template);
 
-    $tagsscript = "<script type=\"module\">
-        import { tags } from '{$mybb->settings['bburl']}/inc/plugins/tagsplus/tagsplus-post.js';
-        const badgeTemplateContainer = document.createElement('div');
-        badgeTemplateContainer.innerHTML = `{$badge_template}`;
-        tags(".json_encode($tags).", badgeTemplateContainer.firstElementChild);
-    </script>";
     // todo: allow users to make their own tags is setting enabled
     if (empty($tags)) return;
 
     $tags_value = '';
-    if ($mybb->input['action'] == 'editpost') {
-        $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
-        $current_tags = TagsPlus::get_post_tags($pid, true);
-        $tag_badges = TagsPlus::generate_badges($current_tags, true);
-        $tags_to_ids = function($tag) {
-            return $tag['tagid'];
-        };
-        $tags_value = implode(',',array_map($tags_to_ids, $current_tags));
+    $current_tags = [];
+    if ($mybb->input['action'] == 'editpost' || $mybb->input['action'] == 'editdraft' || $mybb->get_input('thread-tag-ids')) {
+        $pid = $pid ? $pid : $mybb->get_input('pid', MyBB::INPUT_INT);
+
+        if ($pid) {
+            $current_tags = TagsPlus::get_post_tags($pid, true);
+            $tags_to_ids = function($tag) {
+                return $tag['tagid'];
+            };
+            $tags_value = implode(',',array_map($tags_to_ids, $current_tags));
+        } else {
+            $tagids = explode(',', $mybb->get_input('thread-tag-ids'));
+            $current_tags = [];
+            foreach ($tagids as $tagid) {
+                $current_tags[] = $tags[$tagid];
+            }
+            $tags_value = $mybb->get_input('thread-tag-ids');
+        }
     }
+    $tagsscript = "<script src='{$mybb->settings['bburl']}/inc/plugins/tagsplus/d2l-attribute-picker.js?v=1.0.3'></script>
+    <script type=\"module\">
+        import { tags } from '{$mybb->settings['bburl']}/inc/plugins/tagsplus/tagsplus-post.js?v=1.2';
+        const assignedTags = ".json_encode($current_tags).".map(tag => tag.name);
+        tags(Object.values(".json_encode($tags)."), assignedTags);
+    </script>";
+
     eval('$tag_post_input = "'.$templates->get('tagsplus_input').'";');
 }
 
@@ -83,17 +83,25 @@ $plugins->add_hook('datahandler_post_insert_post_end', 'tagsplus_attach_tags');
 $plugins->add_hook('datahandler_post_insert_thread_end', 'tagsplus_attach_tags');
 function tagsplus_attach_tags(&$datahandler) {
     global $db;
-    $tagids = TagsPlus::get_input_tags();
-    $queries = [];
-    // insert multiple into the posttags table
-    foreach ($tagids as $tagid) {
-        $queries[] = [
-            'tagid' => $tagid,
-            'pid' => $datahandler->pid,
-            'dateline' => TIME_NOW
-        ];
+    // check if this post already has tags
+    // in this case, we're posting from a draft
+    $query = $db->simple_select('posttags', 'tagid', 'pid='.$datahandler->pid, ['limit' => 1]);
+    if ($db->num_rows($query)) {
+        TagsPlus::update_tags($datahandler->pid);
+    } else {
+        // insert multiple into the posttags table
+        $tagids = TagsPlus::get_input_tags();
+        if (empty($tagids)) return;
+        $queries = [];
+        foreach ($tagids as $tagid) {
+            $queries[] = [
+                'tagid' => $tagid,
+                'pid' => $datahandler->pid,
+                'dateline' => TIME_NOW
+            ];
+        }
+        $db->insert_query_multiple('posttags', $queries);
     }
-    $db->insert_query_multiple('posttags', $queries);
 }
 
 /**
@@ -101,31 +109,12 @@ function tagsplus_attach_tags(&$datahandler) {
  */
 $plugins->add_hook('datahandler_post_update', 'tagsplus_update_tags');
 function tagsplus_update_tags(&$datahandler) {
-    global $db;
+    global $db, $mybb;
 
-    $current_tagids = TagsPlus::get_post_tags($datahandler->pid);
-    $new_tagids = TagsPlus::get_input_tags();
+    // don't make this a thing for ajax
+    if (defined('THIS_SCRIPT') && THIS_SCRIPT == 'xmlhttp.php') return;
 
-    // remove any that are missing from the input
-     // todo: log the removal somewhere
-    $remove_ids = array_diff($current_tagids, $new_tagids);
-    if (count($remove_ids)){
-        $db->delete_query('posttags', 'pid='.$datahandler->pid.' AND tagid IN ('.(implode(',', $remove_ids)).')');
-    }
-
-    // add any that are new
-    $add_ids = array_diff($new_tagids, $current_tagids);
-    if (count($add_ids)) {
-        $insert_queries = [];
-        foreach ($add_ids as $tagid) {
-            $insert_queries[] = [
-                'tagid' => $tagid,
-                'pid' => $datahandler->pid,
-                'dateline' => TIME_NOW
-            ];
-        }
-        $db->insert_query_multiple('posttags', $insert_queries);
-    }
+    TagsPlus::update_tags($datahandler->pid);
 }
 
 /**
